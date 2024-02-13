@@ -2,7 +2,7 @@
 
 - Tecnologias usadas:
   - PHP 8.2
-  - Nginx Proxy
+  - Nginx
   - MySQL 8.0
 
 - [Github do Repo](https://github.com/daavelar/rinha-de-backend-2024)
