@@ -1,15 +1,17 @@
 {
-    "name": "diego/rinha-de-backend",
-    "autoload": {
-        "psr-4": {
-            "Diego\\RinhaDeBackend\\": "src/"
-        }
-    },
-    "authors": [
-        {
-            "name": "Diego Avelar",
-            "email": "diego.avelar@olistpax.com"
-        }
-    ],
-    "require": {}
+  "name": "diego/rinha-de-backend",
+  "autoload": {
+    "psr-4": {
+      "Diego\\RinhaDeBackend\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Diego Avelar",
+      "email": "diego.avelar@olistpax.com"
+    }
+  ],
+  "require": {
+    "ext-swoole": "*"
+  }
 }
