@@ -3,7 +3,8 @@ version: "3.5"
 services:
   api01: &api
     container_name: api01
-    image: degenozes/rinha:2024
+    build:
+      context: .
     depends_on:
       - mysql
     deploy:
@@ -50,11 +51,6 @@ services:
         limits:
           cpus: "0.4"
           memory: "300MB"
-
-networks:
-  default:
-    driver: bridge
-    name: rinha-nginx-2024q1
 
 volumes:
   mysql-vol:
