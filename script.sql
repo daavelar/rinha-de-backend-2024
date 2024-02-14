@@ -19,7 +19,7 @@ CREATE TABLE transactions
 (
     id          int unsigned    not null auto_increment primary key,
     type        enum ('c', 'd') not null,
-    description char(12)        not null,
+    description char(12)        null,
     customer_id int             not null,
     value       int             not null default 0,
     created_at  timestamp       not null default current_timestamp
