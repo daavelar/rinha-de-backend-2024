@@ -11,7 +11,7 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: "150MB"
+          memory: "100MB"
 
   api02:
     <<: *api
@@ -31,7 +31,7 @@ services:
       resources:
         limits:
           cpus: "0.1"
-          memory: "100MB"
+          memory: "50MB"
 
   mysql:
     image: mysql:8.0
@@ -49,7 +49,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.2"
+          cpus: "0.4"
           memory: "300MB"
 
 networks:

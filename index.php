@@ -15,6 +15,10 @@ $server->on('request', function(Request $request, Response $response) {
         if (preg_match('/\/(\d+)\/+/', $request->server['request_uri'], $matches)) {
             $customerId = $matches[1];
             $customer = getCustomer($customerId);
+            if ($customerId > 5) {
+                $response->status(422);
+                $response->end('Usuário desconhecido');
+            }
             $lastTransactions = getTransactions($customerId);
 
             $responseView = [
@@ -66,8 +70,8 @@ $server->on('request', function(Request $request, Response $response) {
 
 function getPDO()
 {
-    $pdo = new PDO("mysql:host=localhost;port=3306;dbname=rinha", 'root', 'q1w2r4e3');
-//    $pdo = new PDO("mysql:host=mysql;port=3306;dbname=rinha", 'root', 'root');
+//    $pdo = new PDO("mysql:host=localhost;port=3306;dbname=rinha", 'root', 'q1w2r4e3');
+    $pdo = new PDO("mysql:host=mysql;port=3306;dbname=rinha", 'root', 'root');
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     return $pdo;
 }
@@ -81,37 +85,34 @@ function getCustomer($customerId)
     return $stmt->fetchAll(PDO::FETCH_ASSOC)[0];
 }
 
-function getTransactions($customerId, $limit = 10)
+function getTransactions($customerId)
 {
     $pdo = getPDO();
     $sql = "SELECT type as tipo, description as descricao, value as valor, created_at as realizado_em 
-            FROM transactions WHERE id= :id
-            ORDER BY created_at DESC LIMIT $limit";
+            FROM transactions WHERE customer_id=:id
+            ORDER BY created_at DESC 
+            LIMIT 10";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['id' => $customerId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function withdraw($customerId, $value)
+function debit($customerId, $value)
 {
     $accountInfo = getCustomer($customerId);
+    $newBalance = $accountInfo['balance'] - $value;
 
-    if ($value > $accountInfo['limit']) {
+    if ($newBalance * -1 > $accountInfo['limit']) {
         throw new InsufficientFundsException('Saldo insucifiente');
     }
 
     $pdo = getPDO();
-    $newBalance = $accountInfo['balance'] - $value;
-    $limit = $accountInfo['limit'];
-    if ($newBalance < 0) {
-        $limit = $accountInfo['limit'] + $newBalance;
-    }
-    $sql = "UPDATE customers SET balance=:new_balance, `limit`=:limit WHERE id=:id";
+    $sql = "UPDATE customers SET balance=:new_balance WHERE id=:id";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['id' => $customerId, 'new_balance' => $newBalance, 'limit' => $limit]);
+    $stmt->execute(['id' => $customerId, 'new_balance' => $newBalance]);
 }
 
-function deposit($customerId, $value)
+function credit($customerId, $value)
 {
     $pdo = getPDO();
     $balance = getCustomer($customerId)['balance'];
@@ -124,10 +125,10 @@ function deposit($customerId, $value)
 function saveTransaction($type, $value, $description, $customerId)
 {
     if ($type == 'c') {
-        deposit($customerId, $value);
+        credit($customerId, $value);
     }
     if ($type == 'd') {
-        withdraw($customerId, $value);
+        debit($customerId, $value);
     }
 
     $mysql = getPDO();
