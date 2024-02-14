@@ -1,17 +1,18 @@
 {
-  "name": "diego/rinha-de-backend",
-  "autoload": {
-    "psr-4": {
-      "Diego\\RinhaDeBackend\\": "src/"
-    }
-  },
+  "name": "diegueradev/rinha-de-backend",
   "authors": [
     {
       "name": "Diego Avelar",
-      "email": "diego.avelar@olistpax.com"
+      "email": "diegoarmando2011@gmail.com"
     }
   ],
   "require": {
-    "ext-swoole": "*"
+    "ext-openswoole": "*",
+    "ext-pdo": "*",
+    "ext-json": "*",
+    "nesbot/carbon": "^3.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11.0"
   }
 }
