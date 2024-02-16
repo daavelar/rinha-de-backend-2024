@@ -14,11 +14,13 @@ $server->on('request', function(Request $request, Response $response) {
     if ($request->server['request_method'] === 'GET') {
         if (preg_match('/\/(\d+)\/+/', $request->server['request_uri'], $matches)) {
             $customerId = $matches[1];
-            $customer = getCustomer($customerId);
-            if ($customerId > 5) {
+            try {
+                $customer = getCustomer($customerId);
+            } catch (CustomerNotFoundException $e) {
                 $response->status(404);
                 $response->end('Usuário desconhecido');
             }
+
             $lastTransactions = getTransactions($customerId);
 
             $responseView = [
@@ -47,42 +49,42 @@ $server->on('request', function(Request $request, Response $response) {
         $type = $postData['tipo'];
         $description = $postData['descricao'];
 
-        if(!is_int($value)) {
+        if (!is_int($value)) {
             $response->status(422);
-            $response->end('Valor deve ser um número inteiro');
+            $response->write('Valor deve ser um número inteiro');
         }
 
         if (strtolower($type) != 'c' && strtolower($type) != 'd') {
             $response->status(422);
-            $response->end('Tipo de conta inválido, deve ser c ou d');
+            $response->write('Tipo de conta inválido, deve ser c ou d');
         }
 
         if (strlen($description) < 1 || strlen($description) > 10) {
             $response->status(422);
-            $response->end('Descrição deve ter entre 1 e 10 caracteres');
+            $response->write('Descrição deve ter entre 1 e 10 caracteres');
         }
 
         try {
             saveTransaction($type, $value, $description, $customerId);
         } catch (InsufficientFundsException $e) {
             $response->status(422);
-            $response->end('Saldo insuficiente para realizar esta operação');
+            $response->write('Saldo insuficiente para realizar esta operação');
         }
         $customer = getCustomer($customerId);
 
         $response->header('Content-Type', 'application/json');
-        $response->end(json_encode([
+        $response->write(json_encode([
             'limite' => $customer['limit'],
             'saldo' => $customer['balance']
         ]));
+        $response->end();
     }
 });
 
 function getPDO()
 {
     $options = [PDO::ATTR_PERSISTENT => true];
-//    $pdo = new PDO("mysql:host=localhost;port=3306;dbname=rinha", 'root', 'q1w2r4e3', $options);
-    $pdo = new PDO("mysql:host=mysql;port=3306;dbname=rinha", 'root', 'root', $options);
+    $pdo = new PDO("pgsql:host=postgres;port=5432;dbname=rinha", 'postgres', 'postgres', $options);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_TIMEOUT, 2);
     return $pdo;
@@ -91,16 +93,22 @@ function getPDO()
 function getCustomer($customerId)
 {
     $pdo = getPDO();
-    $sql = "SELECT name, `limit`, balance FROM customers WHERE id= :id";
+    $sql = "SELECT name, \"limit\", balance FROM customers WHERE id= :id";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['id' => $customerId]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC)[0];
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC)[0];
+
+    if (empty($result)) {
+        throw new CustomerNotFoundException('Cliente não encontrado');
+    }
+
+    return $result;
 }
 
 function getTransactions($customerId)
 {
     $pdo = getPDO();
-    $sql = "SELECT description as descricao, type as tipo, value as valor 
+    $sql = "SELECT description AS descricao, type AS tipo, value AS valor 
             FROM transactions WHERE customer_id=:id
             ORDER BY created_at DESC 
             LIMIT 10";
@@ -149,10 +157,10 @@ function saveTransaction($type, $value, $description, $customerId)
         debit($customerId, $value);
     }
 
-    $mysql = getPDO();
-    $sql = "INSERT INTO transactions (`description`, `type`, `value`, `customer_id`, created_at)
+    $pdo = getPDO();
+    $sql = "INSERT INTO transactions (description, type, value, customer_id, created_at)
             VALUES (:description, :type, :value, :customer_id, :created_at)";
-    $stmt = $mysql->prepare($sql);
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([
         'description' => $description,
         'type' => $type,
@@ -160,6 +168,10 @@ function saveTransaction($type, $value, $description, $customerId)
         'customer_id' => $customerId,
         'created_at' => Carbon::now()->format('Y-m-d H:i:s.u')
     ]);
+}
+
+class CustomerNotFoundException extends Exception
+{
 }
 
 class InsufficientFundsException extends Exception
