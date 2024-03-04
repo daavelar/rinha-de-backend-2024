@@ -52,16 +52,19 @@ $server->on('request', function(Request $request, Response $response) {
         if (!is_int($value)) {
             $response->status(422);
             $response->write('Valor deve ser um número inteiro');
+            $response->end();
         }
 
         if (strtolower($type) != 'c' && strtolower($type) != 'd') {
             $response->status(422);
             $response->write('Tipo de conta inválido, deve ser c ou d');
+            $response->end();
         }
 
         if (strlen($description) < 1 || strlen($description) > 10) {
             $response->status(422);
             $response->write('Descrição deve ter entre 1 e 10 caracteres');
+            $response->end();
         }
 
         try {
@@ -69,6 +72,7 @@ $server->on('request', function(Request $request, Response $response) {
         } catch (InsufficientFundsException $e) {
             $response->status(422);
             $response->write('Saldo insuficiente para realizar esta operação');
+            $response->end();
         }
         $customer = getCustomer($customerId);
 
@@ -84,7 +88,7 @@ $server->on('request', function(Request $request, Response $response) {
 function getPDO()
 {
     $options = [PDO::ATTR_PERSISTENT => true];
-    $pdo = new PDO("pgsql:host=postgres;port=5432;dbname=rinha", 'postgres', 'postgres', $options);
+    $pdo = new PDO("mysql:host=mysql;port=3306;dbname=rinha", 'root', 'root', $options);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_TIMEOUT, 2);
     return $pdo;
@@ -93,7 +97,7 @@ function getPDO()
 function getCustomer($customerId)
 {
     $pdo = getPDO();
-    $sql = "SELECT name, \"limit\", balance FROM customers WHERE id= :id";
+    $sql = "SELECT 'limit', balance FROM customers WHERE id= :id";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['id' => $customerId]);
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC)[0];
@@ -110,10 +114,13 @@ function getTransactions($customerId)
     $pdo = getPDO();
     $sql = "SELECT description AS descricao, type AS tipo, value AS valor 
             FROM transactions WHERE customer_id=:id
-            ORDER BY created_at DESC 
+            ORDER BY created_at DESC
             LIMIT 10";
     $stmt = $pdo->prepare($sql);
+    $lock = new OpenSwoole\Lock(SWOOLE_MUTEX);
+    $lock->lock();
     $stmt->execute(['id' => $customerId]);
+    $lock->unlock();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -122,7 +129,7 @@ function debit($customerId, $value)
     $accountInfo = getCustomer($customerId);
     $newBalance = $accountInfo['balance'] - $value;
 
-    if ($newBalance * -1 > $accountInfo['limit']) {
+    if ($newBalance < -$accountInfo['limit']) {
         throw new InsufficientFundsException('Saldo insucifiente');
     }
 

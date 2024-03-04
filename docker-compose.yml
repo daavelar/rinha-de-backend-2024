@@ -6,7 +6,7 @@ services:
     build:
       context: .
     depends_on:
-      - postgres
+      - mysql
     deploy:
       resources:
         limits:
@@ -33,26 +33,20 @@ services:
           cpus: "0.1"
           memory: "50MB"
 
-  postgres:
-    image: postgres:16
-    container_name: postgres
-    user: postgres
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
     environment:
-      - POSTGRES_DB=rinha
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: rinha
+      MYSQL_USER: rinha
+      MYSQL_PASSWORD: rinha
     ports:
-      - '5432:5432'
+      - "3306:3306"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    command: postgres -c checkpoint_timeout=600 -c max_wal_size=4096
-    healthcheck:
-      test: ['CMD', 'pg_isready']
-      interval: 10s
-      timeout: 5s
-      retries: 5
     deploy:
       resources:
         limits:
-          cpus: '0.4'
-          memory: '300MB'
+          cpus: "0.4"
+          memory: "300MB"

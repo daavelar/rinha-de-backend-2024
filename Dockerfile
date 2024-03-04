@@ -3,8 +3,8 @@ FROM php:8.2-cli-alpine
 RUN apk --no-cache add \
     $PHPIZE_DEPS \
     openssl-dev \
-    postgresql-dev \
-    && docker-php-ext-install pdo_pgsql \
+    mysql-client \
+    && docker-php-ext-install pdo_mysql \
     && pecl install openswoole \
     && docker-php-ext-enable openswoole
 
