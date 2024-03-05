@@ -6,7 +6,7 @@ use OpenSwoole\Http\Request;
 use OpenSwoole\Http\Response;
 
 require 'vendor/autoload.php';
-$port = 9501;
+$port = 9999;
 
 $server = new Server("0.0.0.0", $port);
 
@@ -77,18 +77,17 @@ $server->on('request', function(Request $request, Response $response) {
         $customer = getCustomer($customerId);
 
         $response->header('Content-Type', 'application/json');
-        $response->write(json_encode([
+        $response->end(json_encode([
             'limite' => $customer['limit'],
             'saldo' => $customer['balance']
         ]));
-        $response->end();
     }
 });
 
 function getPDO()
 {
     $options = [PDO::ATTR_PERSISTENT => true];
-    $pdo = new PDO("mysql:host=mysql;port=3306;dbname=rinha", 'root', 'root', $options);
+    $pdo = new PDO("mysql:host=localhost;port=3306;dbname=rinha", 'root', 'q1w2r4e3', $options);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_TIMEOUT, 2);
     return $pdo;
@@ -97,7 +96,7 @@ function getPDO()
 function getCustomer($customerId)
 {
     $pdo = getPDO();
-    $sql = "SELECT 'limit', balance FROM customers WHERE id= :id";
+    $sql = "SELECT `limit`, balance FROM customers WHERE id= :id";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['id' => $customerId]);
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC)[0];
@@ -117,10 +116,7 @@ function getTransactions($customerId)
             ORDER BY created_at DESC
             LIMIT 10";
     $stmt = $pdo->prepare($sql);
-    $lock = new OpenSwoole\Lock(SWOOLE_MUTEX);
-    $lock->lock();
     $stmt->execute(['id' => $customerId]);
-    $lock->unlock();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -129,7 +125,7 @@ function debit($customerId, $value)
     $accountInfo = getCustomer($customerId);
     $newBalance = $accountInfo['balance'] - $value;
 
-    if ($newBalance < -$accountInfo['limit']) {
+    if ($newBalance < ($accountInfo['limit'] * -1)) {
         throw new InsufficientFundsException('Saldo insucifiente');
     }
 
@@ -168,6 +164,8 @@ function saveTransaction($type, $value, $description, $customerId)
     $sql = "INSERT INTO transactions (description, type, value, customer_id, created_at)
             VALUES (:description, :type, :value, :customer_id, :created_at)";
     $stmt = $pdo->prepare($sql);
+    $lock = new OpenSwoole\Lock(SWOOLE_MUTEX);
+    $lock->lock();
     $stmt->execute([
         'description' => $description,
         'type' => $type,
@@ -175,6 +173,7 @@ function saveTransaction($type, $value, $description, $customerId)
         'customer_id' => $customerId,
         'created_at' => Carbon::now()->format('Y-m-d H:i:s.u')
     ]);
+    $lock->unlock();
 }
 
 class CustomerNotFoundException extends Exception

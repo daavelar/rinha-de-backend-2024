@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS customers;
+
 CREATE TABLE customers
 (
     id      int UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
