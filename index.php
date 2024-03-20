@@ -88,20 +88,19 @@ $server->on('request', function(Request $request, Response $response) {
                 'created_at' => Carbon::now()->format('Y-m-d H:i:s.u')
             ]);
             $pdo->commit();
+
+            $response->status(200);
+            $response->header('Content-Type', 'application/json');
+            $response->end(json_encode([
+                'limite' => $customer['max_limit'],
+                'saldo' => $newBalance
+            ]));
         } catch (Exception $e) {
             $pdo->rollBack();
             $response->status(422);
             $response->end();
             return;
         }
-
-        $customer = getCustomer($customerId);
-
-        $response->header('Content-Type', 'application/json');
-        $response->end(json_encode([
-            'limite' => $customer['max_limit'],
-            'saldo' => $customer['balance']
-        ]));
     }
 });
 
@@ -138,7 +137,7 @@ function getPDO()
 function getCustomer($customerId)
 {
     $pdo = getPDO();
-    $sql = "SELECT max_limit, balance FROM customers WHERE id= :id";
+    $sql = "SELECT max_limit, balance FROM customers WHERE id= :id FOR UPDATE LIMIT 1";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['id' => $customerId]);
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -156,6 +155,7 @@ function getTransactions($customerId)
     $sql = "SELECT description AS descricao, type AS tipo, value AS valor 
             FROM transactions WHERE customer_id=:id
             ORDER BY created_at DESC
+            FOR UPDATE
             LIMIT 10";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['id' => $customerId]);
