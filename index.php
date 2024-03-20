@@ -173,7 +173,6 @@ function getTransactions($customerId)
     $sql = "SELECT description AS descricao, type AS tipo, value AS valor 
             FROM transactions WHERE customer_id=:id
             ORDER BY created_at DESC
-            FOR UPDATE
             LIMIT 10";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['id' => $customerId]);
