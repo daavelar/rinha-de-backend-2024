@@ -65,10 +65,12 @@ $server->on('request', function(Request $request, Response $response) {
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             if (empty($result)) {
-                return false;
+                $response->status(404);
+                $response->end();
+                return;
             }
 
-            return $result[0];
+            $customer = $result[0];
 
             if (!$customer) {
                 $response->status(404);
