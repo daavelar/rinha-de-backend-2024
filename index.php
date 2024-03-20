@@ -56,24 +56,40 @@ $server->on('request', function(Request $request, Response $response) {
             return;
         }
 
-        $customer = getCustomer($customerId);
-
-        if ($type == 'c') {
-            $newBalance = intval($customer['balance']) + $value;
-        }
-        if ($type == 'd') {
-            $newBalance = intval($customer['balance']) - $value;
-
-            if ($newBalance < (intval($customer['max_limit']) * -1)) {
-                $response->status(422);
-                $response->end();
-                return;
-            }
-        }
-
         try {
             $pdo = getPDO();
             $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("SELECT max_limit, balance FROM customers WHERE id= :id FOR UPDATE LIMIT 1");
+            $stmt->execute(['id' => $customerId]);
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($result)) {
+                return false;
+            }
+
+            return $result[0];
+
+            if (!$customer) {
+                $response->status(404);
+                $response->end();
+                return;
+            }
+
+            if ($type == 'c') {
+                $newBalance = intval($customer['balance']) + $value;
+            }
+            if ($type == 'd') {
+                $newBalance = intval($customer['balance']) - $value;
+
+                if ($newBalance < (intval($customer['max_limit']) * -1)) {
+                    $response->status(422);
+                    $response->end();
+                    return;
+                }
+            }
+
+
             $stmt1 = $pdo->prepare("UPDATE customers SET balance=:new_balance WHERE id=:id");
             $stmt1->execute(['id' => $customerId, 'new_balance' => $newBalance]);
             $stmt = $pdo->prepare(
