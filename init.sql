@@ -1,30 +1,44 @@
-DROP TABLE IF EXISTS customers;
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+SET default_tablespace = '';
+SET default_table_access_method = heap;
 
-CREATE TABLE customers
+CREATE UNLOGGED TABLE IF NOT EXISTS customers
 (
-    id      int UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name    varchar(120) NOT NULL,
-    `limit` int          NOT NULL DEFAULT 0,
-    balance int          NOT NULL DEFAULT 0
+    id     SERIAL PRIMARY KEY,
+    name   VARCHAR(50)       NOT NULL,
+    max_limit INTEGER           NOT NULL,
+    balance  INTEGER DEFAULT 0 NOT NULL
+        CONSTRAINT check_limit CHECK (balance >= -max_limit)
 );
 
-INSERT INTO customers (name, `limit`)
+CREATE UNLOGGED TABLE IF NOT EXISTS transactions
+(
+    id           SERIAL PRIMARY KEY,
+    customer_id   INTEGER NOT NULL,
+    value        INTEGER NOT NULL,
+    type         CHAR(1) NOT NULL,
+    description    VARCHAR(10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX created_at_customer_id_index ON transactions (created_at, customer_id);
+
+DO
+    $$
+BEGIN
+INSERT INTO customers (name, max_limit)
 VALUES ('o barato sai caro', 1000 * 100),
        ('zan corp ltda', 800 * 100),
        ('les cruders', 10000 * 100),
        ('padaria joia de cocaia', 100000 * 100),
        ('kid mais', 5000 * 100);
-
-DROP TABLE IF EXISTS transactions;
-CREATE TABLE transactions
-(
-    id          int UNSIGNED    NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    type        enum ('c', 'd') NOT NULL,
-    description char(12)        NULL,
-    customer_id int             NOT NULL,
-    value       int             NOT NULL DEFAULT 0,
-    created_at  datetime(3)     NOT NULL
-);
-
-CREATE INDEX transactions_created_at_index ON transactions (created_at DESC);
-CREATE INDEX transactions_customer_id_index ON transactions (customer_id);
+END;
+$$;
